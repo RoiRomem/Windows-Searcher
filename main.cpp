@@ -54,31 +54,36 @@ bool IsExecutable(const std::string& path) {
 
 // Function to execute a command
 void ExecuteCommand(const std::string& command) {
-    SHELLEXECUTEINFO sei = { sizeof(sei) };
+    SHELLEXECUTEINFOW sei = {0};
     sei.cbSize = sizeof(SHELLEXECUTEINFO);
-    sei.lpFile = command.c_str();
     sei.nShow = SW_SHOWNORMAL;
 
+    // Convert command string to wide string properly
+    int wideLength = MultiByteToWideChar(CP_UTF8, 0, command.c_str(), -1, NULL, 0);
+    std::wstring wideCommand(wideLength, 0);
+    MultiByteToWideChar(CP_UTF8, 0, command.c_str(), -1, &wideCommand[0], wideLength);
 
     std::cout << "hello world" << std::endl;
+
     // Determine the appropriate verb
     if (IsDirectory(command)) {
         std::cout << "directory" << std::endl;
-        sei.lpVerb = "explore"; // Open directory in Explorer
+        sei.lpVerb = L"explore"; // Open directory in Explorer
+        sei.lpFile = wideCommand.c_str();
     }
     else if (IsExecutable(command)) {
         std::cout << "executable" << std::endl;
-        sei.lpVerb = "open"; // Open file with default application
+        sei.lpVerb = L"open"; // Open file with default application
+        sei.lpFile = wideCommand.c_str();
     }
     else {
         std::cout << "command" << std::endl;
         RunExtraCommands(sei);
+        return; // Skip ShellExecuteExW since RunExtraCommands handles it
     }
 
-
-
     // Execute the command
-    if (!ShellExecuteEx(&sei)) {
+    if (!ShellExecuteExW(&sei)) {
         std::cerr << "Failed to execute command: " << command << std::endl;
     }
 }
@@ -138,6 +143,9 @@ void Search() {
             if (++counter >= NUM_OF_FINDS) break;
         }
     }
+
+    if (options.empty())
+        options.emplace_back("Search in google");
 
     ReactToOptions();
 }
@@ -279,10 +287,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     // If the buffer is "exit", then close the app
                     if (removeWhitespace(buffer) == "exit") {
                         exit();
-                    } else if (removeWhitespace(buffer) == "firefox") { //added this exception because it kept giving tor browser a priority, and I'm not dailying tor
-                        ExecuteCommand(R"(C:\Program Files\Mozilla Firefox\firefox.exe)");
-                        ShowWindow(window, SW_HIDE);
-                        isWindowActive = false;
                     }
                     else if (removeWhitespace(buffer) == "reload") {
                         installedApps = GetInstalledAppPaths();
