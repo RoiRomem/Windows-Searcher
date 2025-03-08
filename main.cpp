@@ -1,3 +1,5 @@
+#include <ranges>
+
 #include "Searcher.h"
 
 // Function to update the buffer with text from the edit control
@@ -57,11 +59,23 @@ void ExecuteCommand(const std::string& command) {
     sei.lpFile = command.c_str();
     sei.nShow = SW_SHOWNORMAL;
 
+
+    std::cout << "hello world" << std::endl;
     // Determine the appropriate verb
-    if (IsDirectory(command))
+    if (IsDirectory(command)) {
+        std::cout << "directory" << std::endl;
         sei.lpVerb = "explore"; // Open directory in Explorer
-    else
+    }
+    else if (IsExecutable(command)) {
+        std::cout << "executable" << std::endl;
         sei.lpVerb = "open"; // Open file with default application
+    }
+    else {
+        std::cout << "command" << std::endl;
+        RunExtraCommands(sei);
+    }
+
+
 
     // Execute the command
     if (!ShellExecuteEx(&sei)) {
@@ -111,6 +125,13 @@ void Search() {
     const std::vector<std::string> installedApps = GetInstalledAppPaths();
 
     int counter = 0;
+    for (const auto &cmdName: commandMap | std::views::keys) {
+        if (containsBuffer(cmdName)) {
+            options.push_back(cmdName);
+            if (++counter >= NUM_OF_FINDS) break;
+        }
+    }
+
     for (const auto& app : installedApps) {
         if (containsBuffer(app)) {
             options.push_back(app);
@@ -228,6 +249,9 @@ void exit() {
 
 // Entry point
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+    SetCommands();
+
+
     if (!Create(WS_EX_TOPMOST | WS_EX_TOOLWINDOW, APP_NAME, WS_POPUP,
                 GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
                 GetSystemMetrics(SM_CYSCREEN) / 2 - 100,
@@ -263,6 +287,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                         ExecuteCommand(options[currentIndex]);
                         ShowWindow(window, SW_HIDE);
                         isWindowActive = false;
+                    } else {
+                        ExecuteCommand(buffer);
                     }
                 }
             }

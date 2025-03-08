@@ -10,6 +10,7 @@
 #include <shobjidl.h>
 #include <shlguid.h>
 #include <filesystem>
+#include <unordered_map>
 
 
 // Global Variables
@@ -21,6 +22,8 @@ inline char buffer[256] = "";
 inline std::vector<std::string> options;
 inline std::vector<HWND> optionWindows;
 inline unsigned int currentIndex = 0;
+
+inline std::unordered_map<std::string, std::pair<std::string, std::string>> commandMap;
 
 // Constants
 #define APP_NAME "Searcher"
@@ -46,5 +49,11 @@ std::vector<std::string> GetInstalledAppPaths();
 void ExecuteCommand(const std::string &command);
 void OptionDestroyer();
 std::string stringManipulator(const std::string& str, const char delimiter);
+std::string removeWhitespace(const std::string& str);
+
+void RunExtraCommands(SHELLEXECUTEINFO &sei);
+void SetCommands();
+
+
 
 #endif // SEARCHER_H

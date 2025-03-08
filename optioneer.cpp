@@ -6,15 +6,20 @@ std::string stringManipulator(const std::string& str, const char delimiter) {
     const std::string exe = ".exe";
     const std::string url = ".url";
 
-    // remove the parts before the filename
+    // Remove the parts before the filename
     if (const size_t lastPos = temper.find_last_of(delimiter); lastPos != std::string::npos) {
         temper = temper.substr(lastPos + 1);
     }
-    //remove extension
-    if (temper.rfind(exe) || temper.rfind(url)) {
-        if (temper.length() > 4) temper.erase(temper.length() - 4);
+
+    // Remove extension properly
+    if (temper.size() > 4) { // Ensure it's long enough for an extension
+        if (temper.length() >= 4 && temper.compare(temper.length() - 4, 4, exe) == 0) {
+            temper.erase(temper.length() - 4);
+        } else if (temper.length() >= 4 && temper.compare(temper.length() - 4, 4, url) == 0) {
+            temper.erase(temper.length() - 4);
+        }
     }
-    // return the manipulated string
+
     return temper;
 }
 

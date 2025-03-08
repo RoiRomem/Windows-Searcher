@@ -4,7 +4,8 @@ project(WindowsSearcher)
 set(CMAKE_CXX_STANDARD 20) # Changed to C++20
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(WindowsSearcher WIN32 main.cpp optioneer.cpp)
+add_executable(WindowsSearcher WIN32 main.cpp optioneer.cpp
+        extraCommands.cpp)
 
 target_compile_definitions(WindowsSearcher PRIVATE
         WIN32

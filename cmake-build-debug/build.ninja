@@ -65,6 +65,14 @@ build CMakeFiles\WindowsSearcher.dir\optioneer.cpp.obj: CXX_COMPILER__WindowsSea
   TARGET_COMPILE_PDB = CMakeFiles\WindowsSearcher.dir\
   TARGET_PDB = WindowsSearcher.pdb
 
+build CMakeFiles\WindowsSearcher.dir\extraCommands.cpp.obj: CXX_COMPILER__WindowsSearcher_unscanned_Debug C$:\Users\owner\CLionProjects\WindowsSearcher\extraCommands.cpp || cmake_object_order_depends_target_WindowsSearcher
+  DEFINES = -DWIN32
+  FLAGS = /DWIN32 /D_WINDOWS /EHsc /Ob0 /Od /RTC1 -std:c++20 -MDd
+  OBJECT_DIR = CMakeFiles\WindowsSearcher.dir
+  OBJECT_FILE_DIR = CMakeFiles\WindowsSearcher.dir
+  TARGET_COMPILE_PDB = CMakeFiles\WindowsSearcher.dir\
+  TARGET_PDB = WindowsSearcher.pdb
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target WindowsSearcher
@@ -73,7 +81,7 @@ build CMakeFiles\WindowsSearcher.dir\optioneer.cpp.obj: CXX_COMPILER__WindowsSea
 #############################################
 # Link the executable WindowsSearcher.exe
 
-build WindowsSearcher.exe: CXX_EXECUTABLE_LINKER__WindowsSearcher_Debug CMakeFiles\WindowsSearcher.dir\main.cpp.obj CMakeFiles\WindowsSearcher.dir\optioneer.cpp.obj
+build WindowsSearcher.exe: CXX_EXECUTABLE_LINKER__WindowsSearcher_Debug CMakeFiles\WindowsSearcher.dir\main.cpp.obj CMakeFiles\WindowsSearcher.dir\optioneer.cpp.obj CMakeFiles\WindowsSearcher.dir\extraCommands.cpp.obj
   FLAGS = /DWIN32 /D_WINDOWS /EHsc /Ob0 /Od /RTC1 -MDd
   LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:windows
   LINK_LIBRARIES = kernel32.lib  user32.lib  gdi32.lib  winspool.lib  shell32.lib  ole32.lib  oleaut32.lib  uuid.lib  comdlg32.lib  advapi32.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
