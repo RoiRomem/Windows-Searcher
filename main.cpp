@@ -277,10 +277,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 keyStates[VK_RETURN] = true;
                 if (strlen(buffer) > 0) {
                     // If the buffer is "exit", then close the app
-                    if (strcmp(buffer, "exit") == 0) {
+                    if (removeWhitespace(buffer) == "exit") {
                         exit();
-                    } else if (strcmp(buffer, "firefox") == 0 || strcmp(buffer, "firefox ") == 0) { //added this exception because it kept giving tor browser a priority, and I'm not dailying tor
+                    } else if (removeWhitespace(buffer) == "firefox") { //added this exception because it kept giving tor browser a priority, and I'm not dailying tor
                         ExecuteCommand(R"(C:\Program Files\Mozilla Firefox\firefox.exe)");
+                        ShowWindow(window, SW_HIDE);
+                        isWindowActive = false;
+                    }
+                    else if (removeWhitespace(buffer) == "reload") {
+                        installedApps = GetInstalledAppPaths();
                         ShowWindow(window, SW_HIDE);
                         isWindowActive = false;
                     }
@@ -332,12 +337,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         } else {
             keyStates[VK_DOWN] = false;
         }
-
+        bool wasCtrlAPressed = false;
         if ((GetAsyncKeyState(VK_CONTROL) & 0x8000) && (GetAsyncKeyState('A') & 0x8000)) {
             SendMessage(hEdit, EM_SETSEL, 0, -1);
+            wasCtrlAPressed = true;
         }
 
-        if (std::ranges::all_of(keyStates, [](bool b){ return !b; })) {
+        if (std::ranges::all_of(keyStates, [](bool b){ return !b; }) && !wasCtrlAPressed) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
