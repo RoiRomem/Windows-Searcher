@@ -122,7 +122,7 @@ std::vector<std::string> GetInstalledAppPaths() {
 // Function to perform the search
 void Search() {
     options.clear();
-    const std::vector<std::string> installedApps = GetInstalledAppPaths();
+
 
     int counter = 0;
     for (const auto &cmdName: commandMap | std::views::keys) {
@@ -249,6 +249,7 @@ void exit() {
 
 // Entry point
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+    installedApps = GetInstalledAppPaths();
     SetCommands();
 
 

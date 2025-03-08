@@ -57,3 +57,7 @@
 1563	1658	7631557593852741	WindowsSearcher.exe	9e2cdaec480f2c11
 2	1555	7631564403816764	CMakeFiles/WindowsSearcher.dir/extraCommands.cpp.obj	91a9ca477332868d
 1555	1655	7631564419359710	WindowsSearcher.exe	9e2cdaec480f2c11
+29	1870	7631566935164300	CMakeFiles/WindowsSearcher.dir/optioneer.cpp.obj	90c9b45af21ac402
+33	1873	7631566935209387	CMakeFiles/WindowsSearcher.dir/extraCommands.cpp.obj	91a9ca477332868d
+23	1884	7631566935110814	CMakeFiles/WindowsSearcher.dir/main.cpp.obj	b51e44293b4ec622
+1884	2079	7631566953720994	WindowsSearcher.exe	9e2cdaec480f2c11

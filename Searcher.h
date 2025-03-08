@@ -19,6 +19,8 @@ inline HWND hEdit = nullptr;
 inline bool isWindowActive = false;
 inline char buffer[256] = "";
 
+inline std::vector<std::string> installedApps;
+
 inline std::vector<std::string> options;
 inline std::vector<HWND> optionWindows;
 inline unsigned int currentIndex = 0;
