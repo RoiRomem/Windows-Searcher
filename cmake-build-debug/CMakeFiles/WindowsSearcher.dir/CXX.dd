@@ -1,0 +1,5 @@
+ninja_dyndep_version = 1.0
+build CMakeFiles\WindowsSearcher.dir\main.cpp.obj: dyndep
+
+build CMakeFiles\WindowsSearcher.dir\optioneer.cpp.obj: dyndep
+

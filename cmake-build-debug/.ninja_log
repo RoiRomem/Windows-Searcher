@@ -1,0 +1,23 @@
+# ninja log v6
+4	303	7631348343659755	CMakeFiles/WindowsSearcher.dir/main.cpp.obj.ddi	b84da872f8ce3b3b
+7	304	7631348343684811	CMakeFiles/WindowsSearcher.dir/optioneer.cpp.obj.ddi	78d02f51a6621a61
+304	344	7631348347013960	CMakeFiles/WindowsSearcher.dir/CXX.dd	84179c3b18dfe0d4
+304	344	7631348347013960	C:/Users/owner/CLionProjects/WindowsSearcher/cmake-build-debug/CMakeFiles/WindowsSearcher.dir/CXXModules.json	84179c3b18dfe0d4
+304	344	7631348347013960	CMakeFiles/WindowsSearcher.dir/main.cpp.obj.modmap	84179c3b18dfe0d4
+16	1647	7631350723935220	CMakeFiles/WindowsSearcher.dir/main.cpp.obj	b51e44293b4ec622
+304	344	7631348347013960	CMakeFiles/WindowsSearcher.dir/optioneer.cpp.obj.modmap	84179c3b18dfe0d4
+18	1595	7631350723960282	CMakeFiles/WindowsSearcher.dir/optioneer.cpp.obj	90c9b45af21ac402
+1647	1923	7631350740260466	WindowsSearcher.exe	7091804e3121224
+11	137	7631350746494060	build.ninja	4b791423344b47e8
+2	1589	7631353728435819	CMakeFiles/WindowsSearcher.dir/main.cpp.obj	b51e44293b4ec622
+53	507	7631354735437022	WindowsSearcher.exe	7091804e3121224
+26	2131	7631355643573327	CMakeFiles/WindowsSearcher.dir/main.cpp.obj	b51e44293b4ec622
+1	106	7631356754128969	WindowsSearcher.exe	7091804e3121224
+2	1582	7631359739268244	CMakeFiles/WindowsSearcher.dir/main.cpp.obj	b51e44293b4ec622
+1583	1689	7631359755074888	WindowsSearcher.exe	7091804e3121224
+1	1573	7631366909815219	CMakeFiles/WindowsSearcher.dir/main.cpp.obj	b51e44293b4ec622
+1573	1692	7631366925526358	WindowsSearcher.exe	7091804e3121224
+2	1532	7631367295630976	CMakeFiles/WindowsSearcher.dir/main.cpp.obj	b51e44293b4ec622
+1532	1630	7631367310934462	WindowsSearcher.exe	7091804e3121224
+1	1643	7631367977823423	CMakeFiles/WindowsSearcher.dir/main.cpp.obj	b51e44293b4ec622
+1644	1755	7631367994249016	WindowsSearcher.exe	7091804e3121224
