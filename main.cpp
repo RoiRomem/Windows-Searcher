@@ -1,5 +1,3 @@
-#include <ranges>
-
 #include "Searcher.h"
 
 // Function to update the buffer with text from the edit control
@@ -47,7 +45,7 @@ bool IsExecutable(const std::string& path) {
     if (path.length() >= 4) {
         std::string extension = path.substr(path.length() - 4);
         std::ranges::transform(extension, extension.begin(), ::tolower);
-        return (extension == ".exe");
+        return (extension == ".exe" || extension == ".url");
     }
     return false;
 }
@@ -59,11 +57,10 @@ void ExecuteCommand(const std::string& command) {
     sei.nShow = SW_SHOWNORMAL;
 
     // Convert command string to wide string properly
-    int wideLength = MultiByteToWideChar(CP_UTF8, 0, command.c_str(), -1, NULL, 0);
+    int wideLength = MultiByteToWideChar(CP_UTF8, 0, command.c_str(), -1, nullptr, 0);
     std::wstring wideCommand(wideLength, 0);
     MultiByteToWideChar(CP_UTF8, 0, command.c_str(), -1, &wideCommand[0], wideLength);
 
-    std::cout << "hello world" << std::endl;
 
     // Determine the appropriate verb
     if (IsDirectory(command)) {
@@ -77,7 +74,7 @@ void ExecuteCommand(const std::string& command) {
         sei.lpFile = wideCommand.c_str();
     }
     else {
-        std::cout << "command" << std::endl;
+       std::cout << command << std::endl;
         RunExtraCommands(sei);
         return; // Skip ShellExecuteExW since RunExtraCommands handles it
     }
@@ -294,10 +291,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                         isWindowActive = false;
                     }
                     else if (!options.empty()) {
+                        std::cout << options[currentIndex] << std::endl;
                         ExecuteCommand(options[currentIndex]);
                         ShowWindow(window, SW_HIDE);
                         isWindowActive = false;
                     } else {
+                        std::cout << "passing buffer" << std::endl;
                         ExecuteCommand(buffer);
                     }
                 }

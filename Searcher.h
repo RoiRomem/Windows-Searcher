@@ -11,6 +11,7 @@
 #include <shlguid.h>
 #include <filesystem>
 #include <unordered_map>
+#include <ranges>
 
 
 // Global Variables
