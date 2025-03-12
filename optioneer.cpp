@@ -1,83 +1,95 @@
 #include "Searcher.h"
 
-std::string stringManipulator(const std::string& str, const char delimiter) {
-    std::string temper = str;
+// Improved version of stringManipulator
+std::string stringManipulator(const std::string& str, char delimiter) {
+    std::string_view view = str;
 
-    const std::string exe = ".exe";
-    const std::string url = ".url";
-
-    // Remove the parts before the filename
-    if (const size_t lastPos = temper.find_last_of(delimiter); lastPos != std::string::npos) {
-        temper = temper.substr(lastPos + 1);
+    // Extract filename after the last delimiter
+    if (size_t lastPos = view.find_last_of(delimiter); lastPos != std::string_view::npos) {
+        view.remove_prefix(lastPos + 1);
     }
 
-    // Remove extension properly
-    if (temper.size() > 4) { // Ensure it's long enough for an extension
-        if (temper.length() >= 4 && temper.compare(temper.length() - 4, 4, exe) == 0) {
-            temper.erase(temper.length() - 4);
-        } else if (temper.length() >= 4 && temper.compare(temper.length() - 4, 4, url) == 0) {
-            temper.erase(temper.length() - 4);
+    // Remove extensions (.exe or .url)
+    if (view.size() > 4) {
+        if (view.ends_with(".exe") || view.ends_with(".url")) {
+            view.remove_suffix(4);
         }
     }
 
-    return temper;
+    return std::string(view);
 }
 
-// Function to react to search results
+// React to search results: update existing or create new option windows
 void ReactToOptions() {
-    // Clear existing windows first
-    if (OptionDestroyer().size() == options.size()) {
-        for (byte i = 0; i < optionWindows.size(); i++) {
-            SendMessage(optionWindows[i], WM_SETTEXT, 0, reinterpret_cast<LPARAM>(options[i].c_str()));
-        }
-    } else {
-        // Create new windows for each option
-        for (int i = 0; i < options.size(); ++i) {
-            HINSTANCE hInstance = GetModuleHandle(nullptr);
-            optionWindows.push_back(CreateWindowEx(
-                0, "STATIC", stringManipulator(options[i], DELIMITER).c_str(),
-                WS_CHILD | WS_VISIBLE | SS_LEFT,
-                0, 32 * i + 32, 480, 32,
-                window, nullptr, hInstance, nullptr
-            ));
-            if (HFONT hFont = CreateFont(32, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Segoe UI")) {
-                SendMessage(optionWindows[i], WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+    if (optionWindows.size() == options.size()) {
+        // Only update existing windows
+        for (size_t i = 0; i < optionWindows.size(); i++) {
+            if (IsWindow(optionWindows[i])) {
+                std::string cleanText = stringManipulator(options[i], DELIMITER); // Ensure correct text
+                SendMessage(optionWindows[i], WM_SETTEXT, 0, reinterpret_cast<LPARAM>(cleanText.c_str()));
             }
         }
+        return;
+    }
 
-        // Resize the main window to fit all options
-        if (!options.empty()) {
-            const int totalHeight = 32 * static_cast<int>(options.size()) + 32;
-            SetWindowPos(window, nullptr,
-                GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
-                GetSystemMetrics(SM_CYSCREEN) / 2 - 8,
-                480, totalHeight,
-                SWP_NOMOVE | SWP_NOZORDER);
+    // Only destroy windows if the size is different
+    if (optionWindows.size() != options.size()) {
+        OptionDestroyer();
+    }
+
+    HINSTANCE hInstance = GetModuleHandle(nullptr);
+    static HFONT hFont = CreateFont(32, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                             OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                             DEFAULT_PITCH | FF_DONTCARE, "Segoe UI");
+
+    for (size_t i = 0; i < options.size(); ++i) {
+        std::string cleanText = stringManipulator(options[i], DELIMITER); // Ensure correct text
+        HWND hwnd = CreateWindowEx(0, "STATIC", cleanText.c_str(),
+                                   WS_CHILD | WS_VISIBLE | SS_LEFT,
+                                   0, 32 * static_cast<int>(i) + 32, 480, 32,
+                                   window, nullptr, hInstance, nullptr);
+        if (hwnd) {
+            SendMessage(hwnd, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+            optionWindows.push_back(hwnd);
         }
     }
 
+    // Resize window based on number of options
+    if (!options.empty()) {
+        SetWindowPos(window, nullptr,
+                     GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
+                     GetSystemMetrics(SM_CYSCREEN) / 2 - 8,
+                     480, 32 * static_cast<int>(options.size()) + 32,
+                     SWP_NOZORDER);
+    }
 
     UpdateWindow(window);
 }
 
-// Function to reset the window position
+
+// Reset the main window's position and size
 void resetWinPos() {
     SetWindowPos(window, nullptr,
-        GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
-        GetSystemMetrics(SM_CYSCREEN) / 2 - 100,
-        480, 32,
-        SWP_NOMOVE | SWP_NOZORDER);
+                 GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
+                 GetSystemMetrics(SM_CYSCREEN) / 2 - 100,
+                 480, 32,
+                 SWP_NOMOVE | SWP_NOZORDER);
 }
 
-// Function to destroy option windows
+// Destroy all option windows and return previous handles
 std::vector<HWND> OptionDestroyer() {
-    for (HWND hwnd : optionWindows) {
+    std::vector<HWND> legacyOptions = optionWindows; // Avoid move to keep data intact
+
+    for (HWND hwnd : legacyOptions) {
         if (IsWindow(hwnd)) {
             DestroyWindow(hwnd);
         }
     }
-    std::vector<HWND> legacyOptions = optionWindows;
-    optionWindows.clear();
+
+    if (!legacyOptions.empty()) {
+        optionWindows.clear();
+    }
+
     resetWinPos();
     InvalidateRect(window, nullptr, TRUE); // Force redraw
     return legacyOptions;
