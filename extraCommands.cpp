@@ -7,12 +7,16 @@ bool itemExists(const std::unordered_map<K, V>& map, const K& key) {
     return map.contains(key); 
 }
 
-
 void SetCommands() {
     commandMap["shutdown"] = {L"shutdown", L"/s /t 0"};
-    commandMap["restart"] = {L"restart", L"/s /t 0"};
+    commandMap["restart"] = {L"shutdown", L"/r /t 0"};
     commandMap["exit"] = {L"", L""};
     commandMap["reload"] = {L"", L""};
+
+    // Add more custom commands here
+    commandMap["settings"] = {L"ms-settings:", L""};
+    commandMap["calculator"] = {L"calc", L""};
+    commandMap["notepad"] = {L"notepad", L""};
 }
 
 void RunExtraCommands(SHELLEXECUTEINFOW &sei) {

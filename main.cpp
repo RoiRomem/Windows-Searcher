@@ -11,7 +11,7 @@ void UpdateBuffer() {
     if (strlen(buffer) > 0)
         Search();
     else
-        OptionDestroyer();
+        ClearOptions();
 }
 
 std::string removeWhitespace(const std::string& str) {
@@ -60,7 +60,6 @@ void ExecuteCommand(const std::string& command) {
     int wideLength = MultiByteToWideChar(CP_UTF8, 0, command.c_str(), -1, nullptr, 0);
     std::wstring wideCommand(wideLength, 0);
     MultiByteToWideChar(CP_UTF8, 0, command.c_str(), -1, &wideCommand[0], wideLength);
-
 
     // Determine the appropriate verb
     if (IsDirectory(command)) {
@@ -136,7 +135,6 @@ std::unordered_set<std::string> GetInstalledAppPaths() {
 void Search() {
     options.clear();
 
-
     int counter = 0;
     for (const auto &cmdName: commandMap | std::views::keys) {
         if (containsBuffer(cmdName)) {
@@ -160,7 +158,30 @@ void Search() {
     if (options.empty())
         options.emplace_back("Search in google");
 
-    ReactToOptions();
+    // Instead of creating child windows, just update the options list and redraw the parent window
+    UpdateWindowSize();
+    InvalidateRect(window, nullptr, TRUE);
+}
+
+// Function to update the window size based on number of options
+void UpdateWindowSize() {
+    if (!options.empty()) {
+        SetWindowPos(window, nullptr,
+                    GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
+                    GetSystemMetrics(SM_CYSCREEN) / 2 - 100,
+                    480, 32 * static_cast<int>(options.size()) + 32,
+                    SWP_NOZORDER);
+
+        // Update the region for rounded corners after resizing
+        RECT rect;
+        GetWindowRect(window, &rect);
+        int width = rect.right - rect.left;
+        int height = rect.bottom - rect.top;
+
+        HRGN rgn = CreateRoundRectRgn(0, 0, width+1, height+1, static_cast<int>(edge_radius), static_cast<int>(edge_radius));
+        SetWindowRgn(window, rgn, TRUE);
+        DeleteObject(rgn);
+    }
 }
 
 // Function to activate the window
@@ -193,9 +214,20 @@ BOOL Create(DWORD dwExStyle, LPCSTR lpWindowName, DWORD dwStyle, int x, int y, i
     wc.hInstance = hInstance;
     wc.lpszClassName = lpWindowName;
     RegisterClass(&wc);
-    window = CreateWindowEx(dwExStyle, lpWindowName, lpWindowName, dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpCmdLine);
 
-    SetClassLongPtr(window, GCLP_HBRBACKGROUND, reinterpret_cast<LONG_PTR>(CreateSolidBrush(RGB(0, 0, 0))));
+    // Create window with layered style for transparency
+    window = CreateWindowEx(dwExStyle | WS_EX_LAYERED, lpWindowName, lpWindowName, dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpCmdLine);
+
+    // Set the window transparency (225 = slight transparency)
+    SetLayeredWindowAttributes(window, 0, static_cast<int>(bk_color[3]), LWA_ALPHA);
+
+    // Create rounded corners
+    const HRGN rgn = CreateRoundRectRgn(0, 0, nWidth+1, nHeight+1, static_cast<int>(edge_radius), static_cast<int>(edge_radius));
+    SetWindowRgn(window, rgn, TRUE);
+    DeleteObject(rgn);
+
+    // Set the window background color
+    SetClassLongPtr(window, GCLP_HBRBACKGROUND, reinterpret_cast<LONG_PTR>(CreateSolidBrush(RGB(bk_color[0], bk_color[1], bk_color[2]))));
 
     return (window ? TRUE : FALSE);
 }
@@ -219,31 +251,79 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             }
             return 0;
 
-
         case WM_CTLCOLOREDIT:
             if (reinterpret_cast<HWND>(lParam) == hEdit) {
-                SetTextColor(reinterpret_cast<HDC>(wParam), RGB(255, 255, 255)); // White text
-                SetBkColor(reinterpret_cast<HDC>(wParam), RGB(0, 0, 0)); // Black background
-                return reinterpret_cast<LRESULT>(CreateSolidBrush(RGB(0, 0, 0)));
+                SetTextColor(reinterpret_cast<HDC>(wParam), RGB(txt_color[0], txt_color[1], txt_color[2])); // White text
+                SetBkColor(reinterpret_cast<HDC>(wParam), RGB(bk_color[0], bk_color[1], bk_color[2])); // Dark background
+                return reinterpret_cast<LRESULT>(CreateSolidBrush(RGB(bk_color[0], bk_color[1], bk_color[2])));
             }
             break;
 
-        case WM_CTLCOLORSTATIC: {
-            HDC hdc = reinterpret_cast<HDC>(wParam);
-            HWND hwndStatic = reinterpret_cast<HWND>(lParam);
+        // Custom painting for the entire window
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
 
-            // Highlight current index
-            if (hwndStatic == optionWindows[currentIndex]) {
-                SetTextColor(hdc, RGB(0, 0, 0)); // Black text
-                SetBkColor(hdc, RGB(255, 255, 255)); // White background
-                return reinterpret_cast<LRESULT>(CreateSolidBrush(RGB(255, 255, 255)));
+            // Set up transparent background
+            SetBkMode(hdc, TRANSPARENT);
+
+            // Create font for options
+            HFONT hFont = CreateFont(28, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                                  OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                                  DEFAULT_PITCH | FF_DONTCARE, font.c_str());
+
+            const auto hOldFont = SelectObject(hdc, hFont);
+
+            // Draw each option
+            for (size_t i = 0; i < options.size(); i++) {
+                RECT rc = {0, 32 * static_cast<int>(i) + 32, 480, 32 * static_cast<int>(i) + 64};
+                std::string dt = options[i];
+                dt = stringManipulator(dt, DELIMITER);
+                dt[0] = std::toupper(dt[0]);
+                std::string displayText = dt;
+
+                // Highlight the selected option with a gradient background and rounded rectangle
+                if (i == currentIndex) {
+                    // Create a rounded rectangle for selection
+                    HBRUSH hSelectedBrush = CreateSolidBrush(RGB(sel_color[0], sel_color[1], sel_color[2]));
+                    HPEN hSelectedPen = CreatePen(PS_SOLID, 1, RGB(120, 120, 200));
+
+                    const auto hOldPen = SelectObject(hdc, hSelectedPen);
+                    const auto hOldBrush = SelectObject(hdc, hSelectedBrush);
+
+                    // Draw rounded highlight rectangle
+                    RoundRect(hdc, rc.left, rc.top, rc.right, rc.bottom, 10, 10);
+
+                    // Set text color for selected item
+                    SetTextColor(hdc, RGB(255, 255, 255));
+
+                    // Draw text with slight offset for a shadow effect
+                    RECT shadowRc = {rc.left + 1, rc.top + 1, rc.right + 1, rc.bottom + 1};
+                    SetTextColor(hdc, RGB(0, 0, 0));
+                    DrawText(hdc, displayText.c_str(), -1, &shadowRc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+
+                    // Draw the main text
+                    SetTextColor(hdc, RGB(255, 255, 255));
+                    DrawText(hdc, displayText.c_str(), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+
+                    // Clean up
+                    SelectObject(hdc, hOldPen);
+                    SelectObject(hdc, hOldBrush);
+                    DeleteObject(hSelectedBrush);
+                    DeleteObject(hSelectedPen);
+                } else {
+                    // Regular text for non-selected items
+                    SetTextColor(hdc, RGB(200, 200, 200));
+                    DrawText(hdc, displayText.c_str(), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                }
             }
-            // Default for other options
-            else {
-                SetTextColor(hdc, RGB(255, 255, 255)); // White text
-                SetBkColor(hdc, RGB(0, 0, 0)); // Black background
-                return reinterpret_cast<LRESULT>(CreateSolidBrush(RGB(0, 0, 0)));
-            }
+
+            // Clean up
+            SelectObject(hdc, hOldFont);
+            DeleteObject(hFont);
+
+            EndPaint(hwnd, &ps);
+            return 0;
         }
 
         case WM_ACTIVATE:
@@ -279,13 +359,13 @@ void UpdateInstalledApps() {
 
 // Entry point
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+    SetValues();
     std::thread updater(UpdateInstalledApps);
 
     // Detach thread so it runs independently
     updater.detach();
 
     SetCommands();
-
 
     if (!Create(WS_EX_TOPMOST | WS_EX_TOOLWINDOW, APP_NAME, WS_POPUP,
                 GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
@@ -350,7 +430,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 if (!options.empty()) {
                     if (currentIndex == 0) currentIndex = options.size() - 1;
                     else currentIndex--;
-                    InvalidateRect(window, nullptr, TRUE);
+                    InvalidateRect(window, nullptr, TRUE); // Redraw window to update selection
                 }
             }
         } else {
