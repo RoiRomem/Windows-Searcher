@@ -57,10 +57,10 @@ void ReactToOptions() {
     // Resize window based on number of options
     if (!options.empty()) {
         SetWindowPos(window, nullptr,
-                     GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
-                     GetSystemMetrics(SM_CYSCREEN) / 2 - 8,
-                     480, 32 * static_cast<int>(options.size()) + 32,
-                     SWP_NOZORDER);
+                GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
+                GetSystemMetrics(SM_CYSCREEN) / 2 - 100,
+                480, 32 * static_cast<int>(options.size()) + 32,
+                SWP_NOZORDER);
     }
 
     UpdateWindow(window);
@@ -70,10 +70,10 @@ void ReactToOptions() {
 // Reset the main window's position and size
 void resetWinPos() {
     SetWindowPos(window, nullptr,
-                 GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
-                 GetSystemMetrics(SM_CYSCREEN) / 2 - 100,
-                 480, 32,
-                 SWP_NOMOVE | SWP_NOZORDER);
+               GetSystemMetrics(SM_CXSCREEN) / 2 - 240,
+               GetSystemMetrics(SM_CYSCREEN) / 2 - 100,
+               480, 32,
+               SWP_NOMOVE | SWP_NOZORDER);
 }
 
 // Destroy all option windows and return previous handles
