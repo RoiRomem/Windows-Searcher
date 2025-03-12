@@ -4,7 +4,7 @@ using namespace std;
 
 template <typename K, typename V>
 bool itemExists(const std::unordered_map<K, V>& map, const K& key) {
-    return map.contains(key); // Requires C++20
+    return map.contains(key); 
 }
 
 
@@ -12,6 +12,7 @@ void SetCommands() {
     commandMap["shutdown"] = {L"shutdown", L"/s /t 0"};
     commandMap["restart"] = {L"restart", L"/s /t 0"};
     commandMap["exit"] = {L"", L""};
+    commandMap["reload"] = {L"", L""};
 }
 
 void RunExtraCommands(SHELLEXECUTEINFOW &sei) {

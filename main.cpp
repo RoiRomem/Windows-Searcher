@@ -8,7 +8,7 @@ void UpdateBuffer() {
         buffer[i] = static_cast<char>(std::tolower(buffer[i]));
     }
     currentIndex = 0;
-    if (strlen(buffer) > 1)
+    if (strlen(buffer) > 0)
         Search();
     else
         OptionDestroyer();
@@ -86,38 +86,49 @@ void ExecuteCommand(const std::string& command) {
 }
 
 // Function to search for installed applications
-std::vector<std::string> GetInstalledAppPaths() {
-    const std::string shortcutDir = std::string(getenv("USERPROFILE")) +
-        R"(\AppData\Roaming\Microsoft\Windows\Start Menu\Programs)";
-    std::vector<std::string> appPaths;
+std::unordered_set<std::string> GetInstalledAppPaths() {
+    const std::string Dirs[] = {
+        std::string(getenv("USERPROFILE"))+R"(\AppData\Roaming\Microsoft\Windows\Start Menu\Programs)",
+        std::string(getenv("USERPROFILE"))+R"(\Desktop)",
+        R"(C:\ProgramData\Microsoft\Windows\Start Menu\Programs)"
+    };
 
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(shortcutDir)) {
-        if (entry.path().extension() == ".lnk") {
-            IShellLink* psl;
-            HRESULT hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast<LPVOID *>(&psl));
+    std::unordered_set<std::string> appPaths;
 
-            if (SUCCEEDED(hres)) {
-                IPersistFile* ppf;
-                hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast<LPVOID *>(&ppf));
+    for (const auto& shortcutDir: Dirs) {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(shortcutDir)) {
+            if (entry.path().extension() == ".lnk") {
+                IShellLink* psl;
+                HRESULT hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast<LPVOID *>(&psl));
 
                 if (SUCCEEDED(hres)) {
-                    std::wstring widePath = entry.path().wstring();
-                    hres = ppf->Load(widePath.c_str(), STGM_READ);
+                    IPersistFile* ppf;
+                    hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast<LPVOID *>(&ppf));
 
                     if (SUCCEEDED(hres)) {
-                        TCHAR szTargetPath[MAX_PATH];
-                        if (SUCCEEDED(psl->GetPath(szTargetPath, MAX_PATH, nullptr, SLGP_UNCPRIORITY))) {
-                            appPaths.emplace_back(szTargetPath);
+                        std::wstring widePath = entry.path().wstring();
+                        hres = ppf->Load(widePath.c_str(), STGM_READ);
+
+                        if (SUCCEEDED(hres)) {
+                            TCHAR szTargetPath[MAX_PATH];
+                            if (SUCCEEDED(psl->GetPath(szTargetPath, MAX_PATH, nullptr, SLGP_UNCPRIORITY))) {
+                                if (!appPaths.contains(szTargetPath)) {
+                                    appPaths.insert(szTargetPath);
+                                }
+                            }
                         }
+                        ppf->Release();
                     }
-                    ppf->Release();
+                    psl->Release();
                 }
-                psl->Release();
+            } else if (entry.path().extension() == ".url") {
+                if (!appPaths.contains(entry.path().string())) {
+                    appPaths.insert(entry.path().string());
+                }
             }
-        } else if (entry.path().extension() == ".url") {
-            appPaths.emplace_back(entry.path().string()); // I wanna load my steam games alright
         }
     }
+
     return appPaths;
 }
 
@@ -134,10 +145,15 @@ void Search() {
         }
     }
 
+    std::unordered_set<std::string> alreadyIn = std::unordered_set<std::string>();
+
     for (const auto& app : installedApps) {
-        if (containsBuffer(app)) {
-            options.push_back(app);
-            if (++counter >= NUM_OF_FINDS) break;
+        if (containsBuffer(app) && !alreadyIn.contains(stringManipulator(app, DELIMITER))) {
+            if (app.length() >= 3 && app.substr(app.length() - 3) == "exe" || app.length() >= 3 && app.substr(app.length() - 3) == ".url") {
+                options.push_back(app);
+                alreadyIn.insert(stringManipulator(app, DELIMITER));
+                if (++counter >= NUM_OF_FINDS) break;
+            }
         }
     }
 
@@ -203,6 +219,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             }
             return 0;
 
+
         case WM_CTLCOLOREDIT:
             if (reinterpret_cast<HWND>(lParam) == hEdit) {
                 SetTextColor(reinterpret_cast<HDC>(wParam), RGB(255, 255, 255)); // White text
@@ -252,9 +269,21 @@ void exit() {
     SendMessage(window, WM_CLOSE, 0, 0);
 }
 
+void UpdateInstalledApps() {
+    while (isSearching) {
+        installedApps = GetInstalledAppPaths();  // Update global variable
+        std::cout << "Updated installed apps!\n";
+        std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds
+    }
+}
+
 // Entry point
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
-    installedApps = GetInstalledAppPaths();
+    std::thread updater(UpdateInstalledApps);
+
+    // Detach thread so it runs independently
+    updater.detach();
+
     SetCommands();
 
 
@@ -273,7 +302,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Key state tracking
     bool keyStates[256] = {false};
-
+    installedApps = GetInstalledAppPaths();
     MSG msg = {nullptr};
     while (GetMessage(&msg, nullptr, 0, 0)) {
         // Handle keydown events
@@ -351,6 +380,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             DispatchMessage(&msg);
         }
     }
+
+    // Stop the background thread gracefully
+    isSearching = false;
+    std::this_thread::sleep_for(std::chrono::seconds(6)); // Give time for last update
 
     return 0;
 }
