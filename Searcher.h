@@ -14,10 +14,8 @@
 #include <unordered_set>
 #include <ranges>
 #include <future>
-#include <coroutine>
-#include <thread>
-#include <atomic>
 #include <map>
+#include <cwctype>
 
 // Global Variables
 inline HWND window = nullptr;
@@ -29,8 +27,6 @@ inline std::unordered_set<std::wstring> installedApps;
 
 inline std::vector<std::wstring> options;
 inline unsigned int currentIndex = 0;
-
-inline std::atomic<bool> isSearching = true;
 
 inline std::unordered_map<std::wstring, std::pair<std::wstring, std::wstring>> commandMap;
 

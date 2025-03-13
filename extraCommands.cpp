@@ -4,7 +4,7 @@ using namespace std;
 
 template <typename K, typename V>
 bool itemExists(const std::unordered_map<K, V>& map, const K& key) {
-    return map.contains(key); 
+    return map.find(key) != map.end(); // Fixed for compatibility with older C++ standards
 }
 
 void SetCommands() {
@@ -20,10 +20,12 @@ void SetCommands() {
 }
 
 void RunExtraCommands(SHELLEXECUTEINFOW &sei) {
-    if (itemExists(commandMap, removeWhitespace(buffer))) {
+    // Fix: Use proper comparison with cleaned up buffer
+    std::wstring cleanBuffer = removeWhitespace(buffer);
+    if (itemExists(commandMap, cleanBuffer)) {
         sei.lpVerb = L"open";
-        sei.lpFile = commandMap[buffer].first.c_str();
-        sei.lpParameters = commandMap[buffer].second.c_str();
+        sei.lpFile = commandMap[cleanBuffer].first.c_str();
+        sei.lpParameters = commandMap[cleanBuffer].second.c_str();
 
         // Execute the command here
         if (!ShellExecuteExW(&sei)) {
@@ -38,14 +40,8 @@ void RunExtraCommands(SHELLEXECUTEINFOW &sei) {
 void OpenGoogle(SHELLEXECUTEINFOW &sei) {
     const std::wstring GOOGLE_LINKER = L"https://www.google.com/search?q=";
 
-    // Convert buffer to wide string
-    wchar_t wbuffer[256];
-    // Use proper wide character handling for the buffer
-    // Since buffer is already wchar_t in your code, just copy it directly
-    wcscpy_s(wbuffer, 256, buffer);
-
-    // Concatenate URL and search query
-    const std::wstring search = GOOGLE_LINKER + wbuffer;
+    // No need for additional conversion since buffer is already wchar_t
+    std::wstring search = GOOGLE_LINKER + buffer;
 
     // Use ShellExecuteW directly, not ShellExecuteExW
     ShellExecuteW(nullptr, L"open", search.c_str(), nullptr, nullptr, SW_SHOWNORMAL);

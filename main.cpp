@@ -2,13 +2,17 @@
 
 // Function to update the buffer with text from the edit control
 void UpdateBuffer() {
-    GetWindowText(hEdit, reinterpret_cast<LPSTR>(buffer), sizeof(buffer));
-    int length = static_cast<int>(strlen(reinterpret_cast<const char*>(buffer)));
+    // Fix: Properly handle wide string buffer
+    GetWindowTextW(hEdit, buffer, sizeof(buffer)/sizeof(wchar_t));
+
+    // Convert to lowercase (ASCII-only to avoid locale issues)
+    int length = lstrlenW(buffer);
     for (int i = 0; i < length; ++i) {
-        buffer[i] = std::tolower(buffer[i]);
+        buffer[i] = (buffer[i] >= L'A' && buffer[i] <= L'Z') ? (buffer[i] + 32) : buffer[i];
     }
+
     currentIndex = 0;
-    if (strlen(reinterpret_cast<const char*>(buffer)) > 0)
+    if (lstrlenW(buffer) > 0)
         Search();
     else
         ClearOptions();
@@ -17,7 +21,7 @@ void UpdateBuffer() {
 std::wstring removeWhitespace(const std::wstring& str) {
     std::wstring result;
     for (const wchar_t c : str) {
-        if (!std::isspace(c)) {
+        if (!std::iswspace(c)) {
             result += c;
         }
     }
@@ -27,11 +31,14 @@ std::wstring removeWhitespace(const std::wstring& str) {
 // Function to check if a string contains the buffer text
 BOOL containsBuffer(const std::wstring& txt) {
     std::wstring tempTxt = txt;
-    std::ranges::transform(tempTxt, tempTxt.begin(), ::tolower);
+    // Convert to lowercase (ASCII-only to avoid locale issues)
+    for (wchar_t& c : tempTxt) {
+        c = (c >= L'A' && c <= L'Z') ? (c + 32) : c;
+    }
     const std::wstring bufferStr = removeWhitespace(buffer);
     tempTxt = stringManipulator(tempTxt, DELIMITER);
     tempTxt = removeWhitespace(tempTxt);
-    return tempTxt.find(bufferStr) != std::string::npos;
+    return tempTxt.find(bufferStr) != std::wstring::npos;
 }
 
 // Function to check if a path is a directory
@@ -44,7 +51,10 @@ bool IsDirectory(const std::wstring& path) {
 bool IsExecutable(const std::wstring& path) {
     if (path.length() >= 4) {
         std::wstring extension = path.substr(path.length() - 4);
-        std::ranges::transform(extension, extension.begin(), ::tolower);
+        // Convert to lowercase (ASCII-only to avoid locale issues)
+        for (wchar_t& c : extension) {
+            c = (c >= L'A' && c <= L'Z') ? (c + 32) : c;
+        }
         return (extension == L".exe" || extension == L".url");
     }
     return false;
@@ -82,49 +92,50 @@ void ExecuteCommand(const std::wstring& command) {
 
 // Function to search for installed applications
 std::unordered_set<std::wstring> GetInstalledAppPaths() {
-    const std::string Dirs[] = {
-        std::string(getenv("USERPROFILE"))+R"(\AppData\Roaming\Microsoft\Windows\Start Menu\Programs)",
-        std::string(getenv("USERPROFILE"))+R"(\Desktop)",
-        R"(C:\ProgramData\Microsoft\Windows\Start Menu\Programs)"
+    CoInitialize(nullptr); // Initialize COM
+    std::vector<std::wstring> Dirs = {
+        std::filesystem::path(std::getenv("USERPROFILE")).wstring() + L"\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs",
+        std::filesystem::path(std::getenv("USERPROFILE")).wstring() + L"\\Desktop",
+        L"C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs"
     };
 
     std::unordered_set<std::wstring> appPaths;
 
-    for (const auto& shortcutDir: Dirs) {
+    for (const auto& shortcutDir : Dirs) {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(shortcutDir)) {
-            if (entry.path().extension() == ".lnk") {
-                IShellLink* psl;
-                HRESULT hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast<LPVOID *>(&psl));
+            if (entry.path().extension() == L".lnk") {  // Check for .lnk files
+                IShellLinkW* psl = nullptr;
+                HRESULT hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast<void**>(&psl));
 
-                if (SUCCEEDED(hres)) {
-                    IPersistFile* ppf;
-                    hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast<LPVOID *>(&ppf));
+                if (SUCCEEDED(hres) && psl) {
+                    IPersistFile* ppf = nullptr;
+                    hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast<void**>(&ppf));
 
-                    if (SUCCEEDED(hres)) {
+                    if (SUCCEEDED(hres) && ppf) {
                         std::wstring widePath = entry.path().wstring();
                         hres = ppf->Load(widePath.c_str(), STGM_READ);
 
                         if (SUCCEEDED(hres)) {
-                            TCHAR szTargetPath[MAX_PATH];
-                            if (SUCCEEDED(psl->GetPath(szTargetPath, MAX_PATH, nullptr, SLGP_UNCPRIORITY))) {
-                                std::wstring convSzTargetPath = ConvertToWString(szTargetPath);
-                                if (!appPaths.contains(convSzTargetPath)) {
-                                    appPaths.insert(convSzTargetPath);
+                            WCHAR szTargetPath[MAX_PATH] = { 0 };
+                            if (SUCCEEDED(psl->GetPath(szTargetPath, MAX_PATH, nullptr, SLGP_RAWPATH))) { // Use SLGP_RAWPATH
+                                std::wstring targetPath = szTargetPath;
+                                if (targetPath.ends_with(L".exe")) { // Ensure it's an .exe
+                                    appPaths.insert(targetPath);
                                 }
                             }
                         }
-                        ppf->Release();
+                        ppf->Release(); // Release IPersistFile
                     }
-                    psl->Release();
+                    psl->Release(); // Release IShellLinkW
                 }
-            } else if (entry.path().extension() == ".url") {
-                if (!appPaths.contains(entry.path().wstring())) {
-                    appPaths.insert(entry.path().wstring());
-                }
+            } else if (entry.path().extension() == L".url") {
+                std::wstring urlPath = entry.path().wstring();
+                appPaths.insert(urlPath);
             }
         }
     }
 
+    CoUninitialize(); // Clean up COM
     return appPaths;
 }
 
@@ -140,14 +151,16 @@ void Search() {
         }
     }
 
-    std::unordered_set<std::wstring> alreadyIn = std::unordered_set<std::wstring>();
+    std::unordered_set<std::wstring> alreadyIn;
 
     for (const auto& app : installedApps) {
         if (containsBuffer(app) && !alreadyIn.contains(stringManipulator(app, DELIMITER))) {
-            if (app.length() >= 3 && app.substr(app.length() - 3) == L"exe" || app.length() >= 3 && app.substr(app.length() - 3) == L".url") {
+            if (app.substr(app.length() - 4) == L".exe" || app.substr(app.length() - 4) == L".url") {
                 options.push_back(app);
                 alreadyIn.insert(stringManipulator(app, DELIMITER));
                 if (++counter >= NUM_OF_FINDS) break;
+            } else {
+                std::wcout << app.substr(app.length() - 4) << std::endl;
             }
         }
     }
@@ -265,9 +278,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             SetBkMode(hdc, TRANSPARENT);
 
             // Create font for options
-            HFONT hFont = CreateFont(28, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            HFONT hFont = CreateFontW(28, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                                   OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                                  DEFAULT_PITCH | FF_DONTCARE, font.c_str());
+                                  DEFAULT_PITCH | FF_DONTCARE, reinterpret_cast<LPCWSTR>(font.c_str()));
 
             const auto hOldFont = SelectObject(hdc, hFont);
 
@@ -276,13 +289,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 RECT rc = {0, 32 * static_cast<int>(i) + 32, 480, 32 * static_cast<int>(i) + 64};
                 std::wstring dt = options[i];
                 dt = stringManipulator(dt, DELIMITER);
-                dt[0] = std::toupper(dt[0]);
-                std::wstring displayText = dt;
+                dt[0] = std::towupper(dt[0]);
 
-                // Highlight the selected option with a gradient background and rounded rectangle
+                // Fix: Properly draw wide strings
                 if (i == currentIndex) {
                     // Create a rounded rectangle for selection
-                    HBRUSH hSelectedBrush = CreateSolidBrush(RGB(sel_color[0], sel_color[1], sel_color[2]));
+                    HBRUSH hSelectedBrush = CreateSolidBrush(RGB(
+                        static_cast<int>(std::to_integer<int>(sel_color[0])),
+                        static_cast<int>(std::to_integer<int>(sel_color[1])),
+                        static_cast<int>(std::to_integer<int>(sel_color[2]))
+                    ));
                     HPEN hSelectedPen = CreatePen(PS_SOLID, 1, RGB(120, 120, 200));
 
                     const auto hOldPen = SelectObject(hdc, hSelectedPen);
@@ -291,17 +307,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     // Draw rounded highlight rectangle
                     RoundRect(hdc, rc.left, rc.top, rc.right, rc.bottom, 10, 10);
 
-                    // Set text color for selected item
-                    SetTextColor(hdc, RGB(255, 255, 255));
-
                     // Draw text with slight offset for a shadow effect
                     RECT shadowRc = {rc.left + 1, rc.top + 1, rc.right + 1, rc.bottom + 1};
                     SetTextColor(hdc, RGB(0, 0, 0));
-                    DrawText(hdc, reinterpret_cast<LPCSTR>(displayText.c_str()), -1, &shadowRc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                    DrawTextW(hdc, dt.c_str(), -1, &shadowRc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
                     // Draw the main text
                     SetTextColor(hdc, RGB(255, 255, 255));
-                    DrawText(hdc, reinterpret_cast<LPCSTR>(displayText.c_str()), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                    DrawTextW(hdc, dt.c_str(), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
                     // Clean up
                     SelectObject(hdc, hOldPen);
@@ -311,7 +324,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 } else {
                     // Regular text for non-selected items
                     SetTextColor(hdc, RGB(200, 200, 200));
-                    DrawText(hdc, reinterpret_cast<LPCSTR>(displayText.c_str()), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                    DrawTextW(hdc, dt.c_str(), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
                 }
             }
 
@@ -346,22 +359,12 @@ void exit() {
     SendMessage(window, WM_CLOSE, 0, 0);
 }
 
-void UpdateInstalledApps() {
-    while (isSearching) {
-        installedApps = GetInstalledAppPaths();  // Update global variable
-        std::cout << "Updated installed apps!\n";
-        std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds
-    }
-}
-
 // Entry point
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+    // Set locale to "C" to avoid locale-specific behavior
+    std::setlocale(LC_ALL, "C");
+
     SetValues();
-    std::thread updater(UpdateInstalledApps);
-
-    // Detach thread so it runs independently
-    updater.detach();
-
     SetCommands();
 
     if (!Create(WS_EX_TOPMOST | WS_EX_TOOLWINDOW, APP_NAME, WS_POPUP,
@@ -386,12 +389,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         if (GetAsyncKeyState(VK_RETURN) & 0x8000) {
             if (!keyStates[VK_RETURN]) {
                 keyStates[VK_RETURN] = true;
-                if (strlen(reinterpret_cast<const char*>(buffer)) > 0) {
-                    // If the buffer is "exit", then close the app
-                    if (removeWhitespace(buffer) == L"exit") {
+                if (lstrlenW(buffer) > 0) {
+                    // Fix: Proper string comparison
+                    std::wstring bufWithoutSpace = removeWhitespace(buffer);
+                    if (bufWithoutSpace == L"exit") {
                         exit();
                     }
-                    else if (removeWhitespace(buffer) == L"reload") {
+                    else if (bufWithoutSpace == L"reload") {
                         installedApps = GetInstalledAppPaths();
                         ShowWindow(window, SW_HIDE);
                         isWindowActive = false;
@@ -410,14 +414,40 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             keyStates[VK_RETURN] = false;
         }
 
-        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
-            if (!keyStates[VK_ESCAPE]) {
-                keyStates[VK_ESCAPE] = true;
-                ShowWindow(window, SW_HIDE);
-                isWindowActive = false;
+        if (GetAsyncKeyState(VK_TAB) & 0x8000) {
+            keyStates[VK_TAB] = true;
+            if (!options.empty()) {
+                if (options[currentIndex] != L"Search in google") {
+                    const int size_needed = WideCharToMultiByte(CP_UTF8, 0, options[currentIndex].c_str(), -1, nullptr, 0, nullptr, nullptr);
+                    std::string narrowStr(size_needed, 0);
+                    WideCharToMultiByte(CP_UTF8, 0, options[currentIndex].c_str(), -1, &narrowStr[0], size_needed, nullptr, nullptr);
+
+                    LPCSTR result = narrowStr.c_str();
+                    SetWindowText(hEdit, result);
+                }
             }
         } else {
+            keyStates[VK_TAB] = false;
+        }
+
+        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+            keyStates[VK_ESCAPE] = true;
+            ShowWindow(window, SW_HIDE);
+            isWindowActive = false;
+        } else
             keyStates[VK_ESCAPE] = false;
+
+        if (GetAsyncKeyState(VK_DOWN) & 0x8000) {
+            if (!keyStates[VK_DOWN]) {
+                keyStates[VK_DOWN] = true;
+                if (!options.empty()) {
+                    if (currentIndex == options.size() - 1) currentIndex = 0;
+                    else currentIndex++;
+                    InvalidateRect(window, nullptr, TRUE); // Redraw window to update selection
+                }
+            }
+        } else {
+            keyStates[VK_DOWN] = false;
         }
 
         if (GetAsyncKeyState(VK_UP) & 0x8000) {
@@ -433,18 +463,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             keyStates[VK_UP] = false;
         }
 
-        if (GetAsyncKeyState(VK_DOWN) & 0x8000) {
-            if (!keyStates[VK_DOWN]) {
-                keyStates[VK_DOWN] = true;
-                if (!options.empty()) {
-                    if (currentIndex == options.size() - 1) currentIndex = 0;
-                    else currentIndex++;
-                    InvalidateRect(window, nullptr, TRUE); // Redraw window to update selection
-                }
-            }
-        } else {
-            keyStates[VK_DOWN] = false;
-        }
         bool wasCtrlAPressed = false;
         if ((GetAsyncKeyState(VK_CONTROL) & 0x8000) && (GetAsyncKeyState('A') & 0x8000)) {
             SendMessage(hEdit, EM_SETSEL, 0, -1);
@@ -456,10 +474,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             DispatchMessage(&msg);
         }
     }
-
-    // Stop the background thread gracefully
-    isSearching = false;
-    std::this_thread::sleep_for(std::chrono::seconds(6)); // Give time for last update
 
     return 0;
 }
