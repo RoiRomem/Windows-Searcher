@@ -23,16 +23,16 @@
 inline HWND window = nullptr;
 inline HWND hEdit = nullptr;
 inline bool isWindowActive = false;
-inline char buffer[256] = "";
+inline wchar_t buffer[256] = L"";
 
-inline std::unordered_set<std::string> installedApps;
+inline std::unordered_set<std::wstring> installedApps;
 
-inline std::vector<std::string> options;
+inline std::vector<std::wstring> options;
 inline unsigned int currentIndex = 0;
 
 inline std::atomic<bool> isSearching = true;
 
-inline std::unordered_map<std::string, std::pair<std::wstring, std::wstring>> commandMap;
+inline std::unordered_map<std::wstring, std::pair<std::wstring, std::wstring>> commandMap;
 
 // Constants
 #define APP_NAME "Searcher"
@@ -62,19 +62,33 @@ void Search();
 void UpdateWindowSize();
 void resetWinPos();
 void UpdateBuffer();
-BOOL containsBuffer(const std::string &txt);
+BOOL containsBuffer(const std::wstring& txt);
 
-std::unordered_set<std::string> GetInstalledAppPaths();
-void ExecuteCommand(const std::string &command);
+std::unordered_set<std::wstring> GetInstalledAppPaths();
+void ExecuteCommand(const std::wstring& command);
 
 void ClearOptions();
-std::string stringManipulator(const std::string& str, const char delimiter);
-std::string removeWhitespace(const std::string& str);
+std::wstring stringManipulator(const std::wstring& str, char delimiter);
+std::wstring removeWhitespace(const std::wstring& str);
 
 void RunExtraCommands(SHELLEXECUTEINFOW &sei);
 void OpenGoogle(SHELLEXECUTEINFOW &sei);
 void SetCommands();
 
 void SetValues();
+
+// Helper function for Windows API issues
+bool IsDirectory(const std::wstring& path);
+
+inline std::wstring ConvertToWString(const TCHAR* tcharStr) {
+#ifdef UNICODE
+    return std::wstring(tcharStr); // Direct conversion
+#else
+    int len = MultiByteToWideChar(CP_ACP, 0, tcharStr, -1, nullptr, 0);
+    std::wstring wstr(len, 0);
+    MultiByteToWideChar(CP_ACP, 0, tcharStr, -1, &wstr[0], len);
+    return wstr;
+#endif
+}
 
 #endif // SEARCHER_H

@@ -1,8 +1,8 @@
 #include "Searcher.h"
 
 // Improved version of stringManipulator
-std::string stringManipulator(const std::string& str, char delimiter) {
-    std::string_view view = str;
+std::wstring stringManipulator(const std::wstring& str, char delimiter) {
+    std::wstring_view view = str;
 
     // Extract filename after the last delimiter
     if (size_t lastPos = view.find_last_of(delimiter); lastPos != std::string_view::npos) {
@@ -11,12 +11,12 @@ std::string stringManipulator(const std::string& str, char delimiter) {
 
     // Remove extensions (.exe or .url)
     if (view.size() > 4) {
-        if (view.ends_with(".exe") || view.ends_with(".url")) {
+        if (view.ends_with(L".exe") || view.ends_with(L".url")) {
             view.remove_suffix(4);
         }
     }
 
-    return std::string(view);
+    return std::wstring(view);
 }
 
 // Reset the main window's position and size

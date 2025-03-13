@@ -2,21 +2,21 @@
 
 // Function to update the buffer with text from the edit control
 void UpdateBuffer() {
-    GetWindowText(hEdit, buffer, sizeof(buffer));
-    int length = static_cast<int>(strlen(buffer));
+    GetWindowText(hEdit, reinterpret_cast<LPSTR>(buffer), sizeof(buffer));
+    int length = static_cast<int>(strlen(reinterpret_cast<const char*>(buffer)));
     for (int i = 0; i < length; ++i) {
-        buffer[i] = static_cast<char>(std::tolower(buffer[i]));
+        buffer[i] = std::tolower(buffer[i]);
     }
     currentIndex = 0;
-    if (strlen(buffer) > 0)
+    if (strlen(reinterpret_cast<const char*>(buffer)) > 0)
         Search();
     else
         ClearOptions();
 }
 
-std::string removeWhitespace(const std::string& str) {
-    std::string result;
-    for (char c : str) {
+std::wstring removeWhitespace(const std::wstring& str) {
+    std::wstring result;
+    for (const wchar_t c : str) {
         if (!std::isspace(c)) {
             result += c;
         }
@@ -25,74 +25,70 @@ std::string removeWhitespace(const std::string& str) {
 }
 
 // Function to check if a string contains the buffer text
-BOOL containsBuffer(const std::string& txt) {
-    std::string tempTxt = txt;
+BOOL containsBuffer(const std::wstring& txt) {
+    std::wstring tempTxt = txt;
     std::ranges::transform(tempTxt, tempTxt.begin(), ::tolower);
-    const std::string bufferStr = removeWhitespace(buffer);
+    const std::wstring bufferStr = removeWhitespace(buffer);
     tempTxt = stringManipulator(tempTxt, DELIMITER);
     tempTxt = removeWhitespace(tempTxt);
     return tempTxt.find(bufferStr) != std::string::npos;
 }
 
 // Function to check if a path is a directory
-bool IsDirectory(const std::string& path) {
-    DWORD attributes = GetFileAttributes(path.c_str());
+bool IsDirectory(const std::wstring& path) {
+    DWORD attributes = GetFileAttributesW(path.c_str());
     return (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY));
 }
 
 // Function to check if a path is an executable
-bool IsExecutable(const std::string& path) {
+bool IsExecutable(const std::wstring& path) {
     if (path.length() >= 4) {
-        std::string extension = path.substr(path.length() - 4);
+        std::wstring extension = path.substr(path.length() - 4);
         std::ranges::transform(extension, extension.begin(), ::tolower);
-        return (extension == ".exe" || extension == ".url");
+        return (extension == L".exe" || extension == L".url");
     }
     return false;
 }
 
 // Function to execute a command
-void ExecuteCommand(const std::string& command) {
+void ExecuteCommand(const std::wstring& command) {
     SHELLEXECUTEINFOW sei = {0};
     sei.cbSize = sizeof(SHELLEXECUTEINFO);
     sei.nShow = SW_SHOWNORMAL;
 
-    // Convert command string to wide string properly
-    int wideLength = MultiByteToWideChar(CP_UTF8, 0, command.c_str(), -1, nullptr, 0);
-    std::wstring wideCommand(wideLength, 0);
-    MultiByteToWideChar(CP_UTF8, 0, command.c_str(), -1, &wideCommand[0], wideLength);
-
-    // Determine the appropriate verb
+    // Properly handle the wstring
     if (IsDirectory(command)) {
         std::cout << "directory" << std::endl;
         sei.lpVerb = L"explore"; // Open directory in Explorer
-        sei.lpFile = wideCommand.c_str();
+        sei.lpFile = command.c_str();
     }
     else if (IsExecutable(command)) {
         std::cout << "executable" << std::endl;
         sei.lpVerb = L"open"; // Open file with default application
-        sei.lpFile = wideCommand.c_str();
+        sei.lpFile = command.c_str();
     }
     else {
-       std::cout << command << std::endl;
         RunExtraCommands(sei);
         return; // Skip ShellExecuteExW since RunExtraCommands handles it
     }
 
     // Execute the command
     if (!ShellExecuteExW(&sei)) {
-        std::cerr << "Failed to execute command: " << command << std::endl;
+        // Use a better error handling mechanism
+        DWORD error = GetLastError();
+        std::cerr << "Failed to execute command. Error code: " << error << std::endl;
     }
 }
 
 // Function to search for installed applications
-std::unordered_set<std::string> GetInstalledAppPaths() {
+std::unordered_set<std::wstring> GetInstalledAppPaths() {
     const std::string Dirs[] = {
         std::string(getenv("USERPROFILE"))+R"(\AppData\Roaming\Microsoft\Windows\Start Menu\Programs)",
         std::string(getenv("USERPROFILE"))+R"(\Desktop)",
         R"(C:\ProgramData\Microsoft\Windows\Start Menu\Programs)"
     };
 
-    std::unordered_set<std::string> appPaths;
+    std::unordered_set<std::wstring> appPaths;
 
     for (const auto& shortcutDir: Dirs) {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(shortcutDir)) {
@@ -111,8 +107,9 @@ std::unordered_set<std::string> GetInstalledAppPaths() {
                         if (SUCCEEDED(hres)) {
                             TCHAR szTargetPath[MAX_PATH];
                             if (SUCCEEDED(psl->GetPath(szTargetPath, MAX_PATH, nullptr, SLGP_UNCPRIORITY))) {
-                                if (!appPaths.contains(szTargetPath)) {
-                                    appPaths.insert(szTargetPath);
+                                std::wstring convSzTargetPath = ConvertToWString(szTargetPath);
+                                if (!appPaths.contains(convSzTargetPath)) {
+                                    appPaths.insert(convSzTargetPath);
                                 }
                             }
                         }
@@ -121,8 +118,8 @@ std::unordered_set<std::string> GetInstalledAppPaths() {
                     psl->Release();
                 }
             } else if (entry.path().extension() == ".url") {
-                if (!appPaths.contains(entry.path().string())) {
-                    appPaths.insert(entry.path().string());
+                if (!appPaths.contains(entry.path().wstring())) {
+                    appPaths.insert(entry.path().wstring());
                 }
             }
         }
@@ -143,11 +140,11 @@ void Search() {
         }
     }
 
-    std::unordered_set<std::string> alreadyIn = std::unordered_set<std::string>();
+    std::unordered_set<std::wstring> alreadyIn = std::unordered_set<std::wstring>();
 
     for (const auto& app : installedApps) {
         if (containsBuffer(app) && !alreadyIn.contains(stringManipulator(app, DELIMITER))) {
-            if (app.length() >= 3 && app.substr(app.length() - 3) == "exe" || app.length() >= 3 && app.substr(app.length() - 3) == ".url") {
+            if (app.length() >= 3 && app.substr(app.length() - 3) == L"exe" || app.length() >= 3 && app.substr(app.length() - 3) == L".url") {
                 options.push_back(app);
                 alreadyIn.insert(stringManipulator(app, DELIMITER));
                 if (++counter >= NUM_OF_FINDS) break;
@@ -156,7 +153,7 @@ void Search() {
     }
 
     if (options.empty())
-        options.emplace_back("Search in google");
+        options.emplace_back(L"Search in google");
 
     // Instead of creating child windows, just update the options list and redraw the parent window
     UpdateWindowSize();
@@ -277,10 +274,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             // Draw each option
             for (size_t i = 0; i < options.size(); i++) {
                 RECT rc = {0, 32 * static_cast<int>(i) + 32, 480, 32 * static_cast<int>(i) + 64};
-                std::string dt = options[i];
+                std::wstring dt = options[i];
                 dt = stringManipulator(dt, DELIMITER);
                 dt[0] = std::toupper(dt[0]);
-                std::string displayText = dt;
+                std::wstring displayText = dt;
 
                 // Highlight the selected option with a gradient background and rounded rectangle
                 if (i == currentIndex) {
@@ -300,11 +297,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     // Draw text with slight offset for a shadow effect
                     RECT shadowRc = {rc.left + 1, rc.top + 1, rc.right + 1, rc.bottom + 1};
                     SetTextColor(hdc, RGB(0, 0, 0));
-                    DrawText(hdc, displayText.c_str(), -1, &shadowRc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                    DrawText(hdc, reinterpret_cast<LPCSTR>(displayText.c_str()), -1, &shadowRc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
                     // Draw the main text
                     SetTextColor(hdc, RGB(255, 255, 255));
-                    DrawText(hdc, displayText.c_str(), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                    DrawText(hdc, reinterpret_cast<LPCSTR>(displayText.c_str()), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
                     // Clean up
                     SelectObject(hdc, hOldPen);
@@ -314,7 +311,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 } else {
                     // Regular text for non-selected items
                     SetTextColor(hdc, RGB(200, 200, 200));
-                    DrawText(hdc, displayText.c_str(), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                    DrawText(hdc, reinterpret_cast<LPCSTR>(displayText.c_str()), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
                 }
             }
 
@@ -389,18 +386,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         if (GetAsyncKeyState(VK_RETURN) & 0x8000) {
             if (!keyStates[VK_RETURN]) {
                 keyStates[VK_RETURN] = true;
-                if (strlen(buffer) > 0) {
+                if (strlen(reinterpret_cast<const char*>(buffer)) > 0) {
                     // If the buffer is "exit", then close the app
-                    if (removeWhitespace(buffer) == "exit") {
+                    if (removeWhitespace(buffer) == L"exit") {
                         exit();
                     }
-                    else if (removeWhitespace(buffer) == "reload") {
+                    else if (removeWhitespace(buffer) == L"reload") {
                         installedApps = GetInstalledAppPaths();
                         ShowWindow(window, SW_HIDE);
                         isWindowActive = false;
                     }
                     else if (!options.empty()) {
-                        std::cout << options[currentIndex] << std::endl;
                         ExecuteCommand(options[currentIndex]);
                         ShowWindow(window, SW_HIDE);
                         isWindowActive = false;

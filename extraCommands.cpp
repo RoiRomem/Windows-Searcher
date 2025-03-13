@@ -8,15 +8,15 @@ bool itemExists(const std::unordered_map<K, V>& map, const K& key) {
 }
 
 void SetCommands() {
-    commandMap["shutdown"] = {L"shutdown", L"/s /t 0"};
-    commandMap["restart"] = {L"shutdown", L"/r /t 0"};
-    commandMap["exit"] = {L"", L""};
-    commandMap["reload"] = {L"", L""};
+    commandMap[L"shutdown"] = {L"shutdown", L"/s /t 0"};
+    commandMap[L"restart"] = {L"shutdown", L"/r /t 0"};
+    commandMap[L"exit"] = {L"", L""};
+    commandMap[L"reload"] = {L"", L""};
 
     // Add more custom commands here
-    commandMap["settings"] = {L"ms-settings:", L""};
-    commandMap["calculator"] = {L"calc", L""};
-    commandMap["notepad"] = {L"notepad", L""};
+    commandMap[L"settings"] = {L"ms-settings:", L""};
+    commandMap[L"calculator"] = {L"calc", L""};
+    commandMap[L"notepad"] = {L"notepad", L""};
 }
 
 void RunExtraCommands(SHELLEXECUTEINFOW &sei) {
@@ -38,9 +38,11 @@ void RunExtraCommands(SHELLEXECUTEINFOW &sei) {
 void OpenGoogle(SHELLEXECUTEINFOW &sei) {
     const std::wstring GOOGLE_LINKER = L"https://www.google.com/search?q=";
 
-    // Convert char buffer (UTF-8) to wide string
+    // Convert buffer to wide string
     wchar_t wbuffer[256];
-    MultiByteToWideChar(CP_UTF8, 0, buffer, -1, wbuffer, 256);
+    // Use proper wide character handling for the buffer
+    // Since buffer is already wchar_t in your code, just copy it directly
+    wcscpy_s(wbuffer, 256, buffer);
 
     // Concatenate URL and search query
     const std::wstring search = GOOGLE_LINKER + wbuffer;
