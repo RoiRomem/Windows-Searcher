@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "CMakeFiles\\Island.dir\\util.cpp.obj",
+            "outputs": [
+                "C:\\Users\\owner\\CLionProjects\\Island\\cmake-build-debug\\vc140.pdb",
+                "CMakeFiles\\Island.dir\\util.cpp.obj.ddi"
+            ],
+            "requires": []
+        }
+    ]
+}
