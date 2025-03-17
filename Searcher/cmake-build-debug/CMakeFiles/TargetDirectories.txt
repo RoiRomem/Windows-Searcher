@@ -1,0 +1,3 @@
+C:/Users/owner/Documents/DevFiles/Win-tools/Searcher/cmake-build-debug/CMakeFiles/WindowsSearcher.dir
+C:/Users/owner/Documents/DevFiles/Win-tools/Searcher/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/owner/Documents/DevFiles/Win-tools/Searcher/cmake-build-debug/CMakeFiles/rebuild_cache.dir
