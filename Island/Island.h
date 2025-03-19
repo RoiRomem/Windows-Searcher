@@ -85,17 +85,12 @@ void RenderIsland(HDC hdc);
 float EaseOutQuad(float t);
 void TransitionTo(IslandState state);
 
-void AddText(HWND hwnd, HDC hdc, int lPrecent, int tPrecent, std::string text);
-std::string GetTime();
+void AddText(const HWND hwnd, HDC hdc, int lPercent, int tPercent, const std::wstring& text);
+std::wstring GetTime();
 BOOL isInState(const IslandState s);
-std::string GetMemoryUsage();
+std::wstring GetMemoryUsage();
 void DrawButton(const HDC hdc, const LPCWSTR imagePath, const int x, const int y, const int width, const int height);
 
-void initWinRT();
-std::string getTrackTitle();
-std::string getTrackArtist();
-void playPause();
-void nextTrack();
-void previousTrack();
+std::wstring GetMediaInfo();
 
 #endif //ISLAND_H

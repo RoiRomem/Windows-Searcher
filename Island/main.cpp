@@ -296,16 +296,15 @@ void RenderIsland(HDC hdc) {
     // COLLAPSED STATE - starts from tPercent 82
     if (isInState(IslandState::COLLAPSED)) {
         AddText(g_hWnd, hdc, 10, 82, GetTime().c_str());
-        AddText(g_hWnd, hdc, 43, 82, "RAM: " + GetMemoryUsage());
+        AddText(g_hWnd, hdc, 43, 82, L"RAM: " + GetMemoryUsage());
     }
 
     // EXPANDED STATE starts from tPercent 30
-    if (isInState(IslandState::EXPANDED)) {
-        AddText(g_hWnd, hdc, 3, 30, GetTime().c_str());
-        AddText(g_hWnd, hdc, 80, 30, "RAM: " + GetMemoryUsage());
+    if ((g_currentState == IslandState::EXPANDED && g_targetState == IslandState::EXPANDED) || (g_currentState == IslandState::COLLAPSED && g_targetState == IslandState::EXPANDED)) {
+        AddText(g_hWnd, hdc, 3, 30, GetTime());
+        AddText(g_hWnd, hdc, 80, 30, L"RAM: " + GetMemoryUsage());
 
-        const std::string title = getTrackTitle() + " - " + getTrackArtist();
-        AddText(g_hWnd, hdc, 50, 10, title);
+        AddText(g_hWnd, hdc, 38, 50, GetMediaInfo());
     }
 
     // Cleanup

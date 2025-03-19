@@ -47,20 +47,22 @@ bool IsMouseOverWindow(HWND hwnd) {
     return PtInRect(&windowRect, cursorPos);
 }
 
-void AddText(const HWND hwnd, HDC hdc, int lPrecent, int tPrecent, std::string text) {
+void AddText(const HWND hwnd, HDC hdc, int lPercent, int tPercent, const std::wstring& text) {
     RECT rect;
     GetClientRect(hwnd, &rect);
 
-    const float xp = lPrecent / 100.0f;
-    const float yp = tPrecent / 100.0f;
+    const float xp = lPercent / 100.0f;
+    const float yp = tPercent / 100.0f;
 
-    int x = rect.right * xp;
-    int y = rect.bottom * yp;
+    int x = static_cast<int>(rect.right * xp);
+    int y = static_cast<int>(rect.bottom * yp);
 
     RECT textRect = {x, y, rect.right, rect.bottom};
 
-    DrawText(hdc, text.c_str(), -1, &textRect, DT_LEFT | DT_TOP);
+    // Use DrawTextW for wide strings
+    DrawTextW(hdc, text.c_str(), -1, &textRect, DT_LEFT | DT_TOP);
 }
+
 
 BOOL isInState(const IslandState s) {
     return (s == g_targetState && s == g_currentState) || (s == g_targetState && IslandState::HIDDEN == g_currentState);

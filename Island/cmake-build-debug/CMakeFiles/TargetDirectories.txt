@@ -1,3 +1,3 @@
-C:/Users/owner/CLionProjects/Island/cmake-build-debug/CMakeFiles/Island.dir
-C:/Users/owner/CLionProjects/Island/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/owner/CLionProjects/Island/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+C:/Users/Cyber_Magshimim/CLionProjects/Windows-Searcher/Island/cmake-build-debug/CMakeFiles/Island.dir
+C:/Users/Cyber_Magshimim/CLionProjects/Windows-Searcher/Island/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/Cyber_Magshimim/CLionProjects/Windows-Searcher/Island/cmake-build-debug/CMakeFiles/rebuild_cache.dir

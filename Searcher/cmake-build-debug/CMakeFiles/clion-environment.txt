@@ -1,5 +1,5 @@
-ToolSet: 17.0 (local)@C:\Program Files\Microsoft Visual Studio\2022\Community
-Ninja: 1.12.1@C:\Users\owner\AppData\Local\Programs\CLion\bin\ninja\win\x64\ninja.exe
+ToolSet: 11.0 w64 (local)@C:\Users\Cyber_Magshimim\AppData\Local\Programs\CLion\bin\mingw
+Ninja: 1.12.1@C:\Users\Cyber_Magshimim\AppData\Local\Programs\CLion\bin\ninja\win\x64\ninja.exe
 Options: 
 
-Options:-DCMAKE_MAKE_PROGRAM=C:/Users/owner/AppData/Local/Programs/CLion/bin/ninja/win/x64/ninja.exe
+Options:-DCMAKE_MAKE_PROGRAM=C:/Users/Cyber_Magshimim/AppData/Local/Programs/CLion/bin/ninja/win/x64/ninja.exe
